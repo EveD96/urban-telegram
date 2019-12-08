@@ -1,0 +1,311 @@
+import random
+from tabulate import tabulate 
+
+class Card(object):
+    """ a playing card.
+    
+    Attributes:
+      suit: integer 0-3
+      rank: integer 1-13
+    """
+
+    suit_names = ["Clubs", "Diamonds", "Hearts", "Spades"]
+    rank_names = [None, "Ace", "2", "3", "4", "5", "6", "7", 
+              "8", "9", "10", "Jack", "Queen", "King"]
+
+    def __init__(self, suit=0, rank=2):
+        self.suit = suit
+        self.rank = rank
+
+    def __str__(self):
+        """Returns a string representation.
+        """
+        return '%s of %s' % (Card.rank_names[self.rank],
+                             Card.suit_names[self.suit])
+
+    def __lt__(self, other):
+        """ Checks the suits
+        """
+        if isinstance(other, type(self)):
+            if self.suit != other.suit:
+                return self.suit < other.suit
+            if self.rank != other.rank:
+                return self.rank < other.rank
+            else:
+                return 0
+
+
+class Deck(object):
+    """ a deck of cards
+   
+    """
+    
+    def __init__(self):
+        self.cards = []
+        for suit in range(4):
+            for rank in range(1, 14):
+                card = Card(suit, rank)
+                self.cards.append(card)
+
+    def __str__(self):
+        res = []
+        for card in self.cards:
+            res.append(str(card))
+        return '\n'.join(res)
+
+    def add_card(self, card):
+        """Adds a card to the deck.
+        """
+        self.cards.append(card)
+
+    def remove_card(self, card):
+        """Removes a card from the deck.
+        """
+        self.cards.remove(card)
+
+    def pop_card(self, i=-1):
+        """Removes and returns a card from the deck.
+
+        i: index of the card to pop
+        by default, pops the last card
+        """
+        return self.cards.pop(i)
+
+    def shuffle(self):
+        """Shuffles the cards in this deck.
+        """
+        random.shuffle(self.cards)
+
+    def sort(self):
+        """Sorts the cards in ascending order.
+        """
+        self.cards.sort()
+
+    def move_cards(self, hand, num):
+        """Moves the given number of cards from the deck into the Hand.
+
+        hand: destination Hand object
+        num: int number of cards that are moved
+        """
+        for i in range(num):
+            hand.add_card(self.pop_card())
+
+
+class Hand(Deck):
+    """a hand of playing cards.
+    """
+    
+    def __init__(self, label=''):
+        self.cards = []
+        self.label = label
+
+class PokerHand(Hand):
+     """contains checks for hands
+     """
+    
+    types_of_hands = ['has_none', 'has_pair', 'has_2pairs', 'has_3_of_a_kind', 'has_straight', 'has_flush', 'has_full_house', 'has_4_of_a_kind', 'has_straight_flush']    
+  
+    def suit_hist(self):
+        """Builds a histogram of the suits that appear in the hand.
+
+        Stores the result in attribute suits.
+        """
+        self.suits = {}
+        for card in self.cards:
+            self.suits[card.suit] = self.suits.get(card.suit, 0) + 1    
+    
+    def rank_hist(self):
+        """Builds a histogram of the ranks that appear in the hand.
+
+        Stores the result in attribute ranks.
+        """
+        self.ranks = {}
+        for card in self.cards:
+            self.ranks[card.rank] = self.ranks.get(card.rank, 0) + 1
+
+    
+    def has_pair(self):
+        """Returns True if the hand has a pair, False otherwise.
+      
+        works for hands with 2 or more cards
+        """
+        self.rank_hist()
+        for val in self.ranks.values():
+            if val >= 2:
+                return True
+        return False
+    
+    def has_3_of_a_kind(self):
+        """Returns True if the hand has three of a kind, False otherwise.
+      
+        works for hands with 3 or more cards
+        """
+        self.rank_hist()
+        for val in self.ranks.values():
+            if val >= 3:
+                return True
+        return False
+    
+    def has_2pairs(self):
+        """Returns True if the hand has two pairs, False otherwise.
+      
+        works for hands with 4 or more cards
+        """
+        self.rank_hist()
+        n = 0
+        for val in self.ranks.values():
+            if val >= 2:
+                n += 1
+            if val == 4:
+                return True
+            if n >= 2:
+                return True
+        return False
+    
+    def has_flush(self):
+        """Returns True if the hand has a flush, False otherwise.
+      
+        works for hands with 5 or more cards.
+        """
+        self.suit_hist()
+        for val in self.suits.values():
+            if val >= 5:
+                return True
+        return False
+    
+    def has_straight(self):
+        """Returns True if the hand has a straight, False otherwise.
+      
+        works for hands with 5 or more cards
+        """
+        self.rank_hist()
+        for card in self.cards:
+            count = 0
+            for i in range(5):
+                if card.rank + i in self.ranks.keys():
+                    count += 1
+            if count >= 5:
+                return True
+        return False
+
+    def has_full_house(self):
+        """Returns True if the hand has a full house, False otherwise.
+      
+        works for hands with 5 or more cards
+        """
+        self.rank_hist()
+        three_the_same = 0 
+        pair = 0
+        for val in self.ranks.values():
+            if val == 2:
+                pair += 1
+            if val >= 3:
+                three_the_same += 1    
+        if (three_the_same >= 2):
+            return True
+        if (three_the_same == 1 and pair >= 1):
+            return True        
+        return False
+    
+    def has_4_of_a_kind(self):
+        """Returns True if the hand has four of a kind, False otherwise.
+      
+        works for hands with 4 or more cards
+        """        
+        self.rank_hist()
+        for val in self.ranks.values():
+            if val >= 4:
+                return True
+        return False
+    
+    def has_straight_flush(self):
+        """Returns True if the hand has a straight flush, False otherwise.
+      
+        works for hands with 5 or more cards
+        """
+        if not self.has_straight() and not self.has_flush():
+            return False
+    
+        for card in self.cards:
+            v = 0
+            for i in range(5):
+                for x in self.cards:
+                    if x.rank == card.rank + i and x.suit == card.suit:
+                        v += 1
+            if v >= 5:   
+                return True
+        return False
+    
+    def classify(self):
+        """ finds the best hand
+        """
+        self.has_hands = []
+        best = PokerHand.types_of_hands[0]
+        
+        for t in PokerHand.types_of_hands[1:]:
+            r = getattr(self, t)
+            if r():
+                self.has_hands.append(t)
+            
+        for item in self.has_hands:
+            if self.types_of_hands.index(item) > self.types_of_hands.index(best):
+                best = item
+            
+        self.label = best
+        return self.label
+
+if __name__ == '__main__':
+    # make a deck
+    deck = Deck()
+    deck.shuffle()
+
+    
+    for i in range(7):
+        # deal the cards into 7 hands and classify the hands
+        hand = PokerHand()
+        deck.move_cards(hand, 7)
+        hand.sort()
+        print (hand)
+        print ('Hand has one pair: ', hand.has_pair())
+        print ('Hand has two pairs: ', hand.has_2pairs())
+        print ('Hand has three-of-a-kind: ', hand.has_3_of_a_kind())
+        print ('Hand has a straight: ', hand.has_straight())
+        print ('Hand has flush: ', hand.has_flush())
+        print ('Hand has a full house: ', hand.has_full_house())
+        print ('Hand has four-of-a-kind: ', hand.has_4_of_a_kind())
+        print ('Hand has straight flush: ', hand.has_straight_flush())
+        print ('Label: ', hand.classify())
+        print (' ')
+        
+
+    def find_probablities(n):
+        """ takes n number of decks 
+        creates a histogram of the number of each hand in given n
+        """
+        prob_hist = {}
+        num_hands = n * 7 
+        
+        for num in range(n):
+            deck = Deck()
+            deck.shuffle()
+            
+            for i in range(7):
+                hand = PokerHand()
+                deck.move_cards(hand, 7)
+                hand.classify()
+                for item in hand.has_hands:
+                    prob_hist[item] = prob_hist.get(item, 0) + 1
+            
+        for type_hand in prob_hist.keys():
+            prob_hist[type_hand] = str(prob_hist[type_hand] / float(num_hands) * 100) + " %"
+    
+        return prob_hist
+    
+    prob_hist = find_probablities(2000)
+    
+    headers = ['Hand', 'Probaility']
+    data = sorted([(v,k) for v,k in prob_hist.items()])
+    
+    print(' ')
+    print(tabulate(data, headers=headers))
+    print(' ')
